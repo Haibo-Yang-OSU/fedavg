@@ -4,7 +4,6 @@
 #SBATCH --time=5-48:00:00
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
-#SBATCH --reservation=neurips20
 
 module load py-pip/9.0.1-py3-dpds55c
 module load cuda/9.2.88-ytn5jg2

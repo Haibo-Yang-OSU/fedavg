@@ -213,19 +213,10 @@ class Server(object):
 		return stats
 
 
-
-
-
-
 	def update_server_state(self, average_delta):
 		pre_para = self.get_flat_model_params()
 		update_para = pre_para + FLAGS.server_lr * average_delta
 		self.set_flat_model_params(update_para)
-
-
-
-
-
 
 
 	def set_flat_model_params(self, flat_params):

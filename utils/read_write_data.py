@@ -126,9 +126,9 @@ class Metrics(object):
         self.acc_on_eval_data = [0] * num_rounds
 
         self.result_path = mkdir(os.path.join('./result', FLAGS.dataset, FLAGS.dataset_name))
-        self.exp_name = 'model_{}_client_lr_{}_server_lr_{}_clients_per_round_{}_local_epochs_{}_num_round_{}_compression_{}'.format(
+        self.exp_name = 'model_{}_client_lr_{}_server_lr_{}_clients_per_round_{}_local_epochs_{}_num_round_{}_compressor_{}_compression_{}'.format(
 	        FLAGS.model, FLAGS.client_lr, FLAGS.server_lr, FLAGS.clients_per_round,
-	        FLAGS.num_epochs, FLAGS.num_round, FLAGS.compress_factor
+	        FLAGS.num_epochs, FLAGS.num_round, FLAGS.compressor, FLAGS.compress_factor
         )
 
         train_event_folder = mkdir(os.path.join(self.result_path, self.exp_name, 'train.event'))

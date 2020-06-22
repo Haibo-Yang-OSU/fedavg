@@ -112,8 +112,6 @@ class Client(object):
         for epoch in range(self.num_epochs):
             train_loss = train_acc = train_total = 0
             for batch_idx, (x, y) in enumerate(self.train_dataloader):
-                # from IPython import embed
-                # embed()
                 if FLAGS.gpu:
                     x, y = x.cuda(), y.cuda()
 

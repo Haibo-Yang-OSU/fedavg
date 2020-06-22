@@ -130,9 +130,9 @@ def get_input_info():
             return {'input_shape': 784, 'num_class': 10}
         else:
             return {'input_shape': (1, 28, 28), 'num_class': 10}
-    elif FLAGS.dataset == 'cifar10':
+    elif FLAGS.dataset == 'fmnist':
+        return {'input_shape': (1, 28, 28), 'num_class': 10}
+    elif FLAGS.dataset == 'cifar_10':
         return {'input_shape': (3, 32, 32), 'num_class': 10}
-    elif FLAGS.dataset == 'synthetic':
-        return {'input_shape': 60, 'num_class': 10}
     else:
         raise ValueError('Not support dataset {}!'.format(dataset))

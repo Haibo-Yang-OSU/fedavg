@@ -35,7 +35,7 @@ def read_options():
 	flags.DEFINE_integer('client_batch_size', 64, 'Size of batches for training and eval.')
 
 	flags.DEFINE_string('server_optimizer', 'sgd', 'name of the optimizer.')
-	flags.DEFINE_float('server_lr', 1.0, 'learning rate.')
+	flags.DEFINE_float('server_lr', 0.01, 'learning rate.')
 	# flags.DEFINE_enum('server_lr_schedule', 'constant', ['constant', 'exp_decay', 'inv_lin_decay', 'inv_sqrt_decay'],
 	                  # 'learning rate schedule of server.')
 	# flags.DEFINE_integer('server_decay_epochs', 25, 'Number of epochs before decaying the learning rate.')
@@ -45,10 +45,11 @@ def read_options():
 	flags.DEFINE_integer('num_epochs', 5, 'Number of epochs to local train.')
 	flags.DEFINE_integer('num_round', 10, 'Number of communication round.')
 
-	flags.DEFINE_float('compress_factor', 0.0, 'gradients compression factore')
+	flags.DEFINE_enum('compressor', 'topK', ['none', 'signSGD', 'random_drop', 'topK'], 'Which model to use for classification.')
+	flags.DEFINE_float('compress_factor', 0.9, 'gradients compression factore')
 
 	# flags.DEFINE_string('model', 'cnn', 'name of the model.')
-	flags.DEFINE_enum('model', 'cnn', ['logistic', '2nn', 'cnn'], 'Which model to use for classification.')
+	flags.DEFINE_enum('model', 'cnn', ['logistic', '2nn', 'cnn', 'ccnn'], 'Which model to use for classification.')
 
 	flags.DEFINE_string(
 		'dataset', 'mnist',

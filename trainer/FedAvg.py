@@ -5,9 +5,12 @@ FedAvg class as trainer
 # To do: model, optimizer
 # To do: client, server
 
+import multiprocessing
+
 from models import model
 from trainer import client
 from utils import read_write_data
+
 
 from utils.torch_utils import get_flat_params_from, set_flat_params_to
 
@@ -17,6 +20,19 @@ import numpy as np
 from absl import flags
 import time
 FLAGS = flags.FLAGS
+
+
+# def multitrain(c, server_flat_params, round_num):
+# 	delta, metric = c.local_train(server_flat_params, round_num=round_num)
+# 	print("Round: {:>2d} | CID: {: >3d} ({:>2d}/{:>2d})| "
+# 	      "Param: norm {:>.4f} ({:>.4f}->{:>.4f})| "
+# 	      "Delta: norm {:>.4f} ({:>.4f}->{:>.4f})| "
+# 	      "Loss {:>.4f} | Acc {:>5.2f}% | Time: {:>.2f}s".format(
+# 		round_num, metric['id'], i, FLAGS.clients_per_round,
+# 		metric['grad_norm'], metric['grad_min'], metric['grad_max'],
+# 		metric['delta_norm'], metric['delta_min'], metric['delta_max'],
+# 		metric['train_loss'], metric['train_acc'] * 100, metric['time']))
+# 	return delta, metric
 
 class Server(object):
 	"""
@@ -55,7 +71,7 @@ class Server(object):
 			all_clients: List of clients
 		"""
 		users, groups, train_data, test_data = self.dataset
-		print(len(groups), len(users))
+		# print("Activate clients number: {}".format(len(users)))
 		if len(groups) == 0:
 			groups = [None for _ in users]
 
@@ -99,18 +115,24 @@ class Server(object):
 		metrics = []
 		server_flat_params = self.get_flat_model_params()
 
+		# cores = multiprocessing.cpu_count()
+		# pool = multiprocessing.Pool(processes=cores)
+		# results = pool.starmap_async(multitrain, [(c, server_flat_params, round_num) for c in sample_clients]).get()
+		# for delta, metric in results:
+		# 	deltas.append(delta)
+		# 	metrics.append(metric)
+
 		for i, c in enumerate(sample_clients):
 			delta, metric = c.local_train(server_flat_params, round_num=round_num)
 
-
-			print("Round: {:>2d} | CID: {: >3d} ({:>2d}/{:>2d})| "
-				    "Param: norm {:>.4f} ({:>.4f}->{:>.4f})| "
-			        "Delta: norm {:>.4f} ({:>.4f}->{:>.4f})| "
-				    "Loss {:>.4f} | Acc {:>5.2f}% | Time: {:>.2f}s".format(
-					round_num, metric['id'], i, FLAGS.clients_per_round,
-					metric['grad_norm'], metric['grad_min'], metric['grad_max'],
-				    metric['delta_norm'], metric['delta_min'], metric['delta_max'],
-					metric['train_loss'], metric['train_acc'] * 100, metric['time']))
+			# print("Round: {:>2d} | CID: {: >3d} ({:>2d}/{:>2d})| "
+			# 	    "Param: norm {:>.4f} ({:>.4f}->{:>.4f})| "
+			#         "Delta: norm {:>.4f} ({:>.4f}->{:>.4f})| "
+			# 	    "Loss {:>.4f} | Acc {:>5.2f}% | Time: {:>.2f}s".format(
+			# 		round_num, metric['id'], i, FLAGS.clients_per_round,
+			# 		metric['grad_norm'], metric['grad_min'], metric['grad_max'],
+			# 	    metric['delta_norm'], metric['delta_min'], metric['delta_max'],
+			# 		metric['train_loss'], metric['train_acc'] * 100, metric['time']))
 
 			deltas.append(delta)
 			metrics.append(metric)
@@ -170,9 +192,8 @@ class Server(object):
 		"""
 		begin_time = time.time()
 		stats = self.local_test(use_eval_data=False)
-		print('\n>>> Training info in Round: {: >4d} / Acc: {:.3%} / Loss: {:.4f} \n'.format(
+		print('>>> Training info in Round: {: >4d} / Acc: {:.3%} / Loss: {:.4f} \n'.format(
 			round_num, stats['acc'], stats['loss']))
-		print('=' * 102 + "\n")
 		self.output_metric.add_training_stats(round_num, stats)
 
 	def test_latest_model_on_testdata(self, round_num):
@@ -183,9 +204,8 @@ class Server(object):
 		"""
 		begin_time = time.time()
 		stats = self.local_test(use_eval_data = True)
-		print('\n>>> Testing info in Round: {: >4d} / Acc: {:.3%} / Loss: {:.4f} \n'.format(
+		print('>>> Testing info in Round: {: >4d} / Acc: {:.3%} / Loss: {:.4f} \n'.format(
 			round_num, stats['acc'], stats['loss']))
-		print('=' * 102 + "\n")
 		self.output_metric.add_test_stats(round_num, stats)
 
 

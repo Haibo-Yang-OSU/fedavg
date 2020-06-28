@@ -2,6 +2,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import importlib
 import math
+import torchvision
+
+from models import resnet
 
 from absl import flags
 FLAGS = flags.FLAGS
@@ -117,10 +120,12 @@ def get_model():
         return CifarCnn(input_shape, num_class)
     elif model_name == 'lenet':
         return LeNet(input_shape, num_class)
-    elif model_name.startswith('vgg'):
-        mod = importlib.import_module('src.models.vgg')
-        vgg_model = getattr(mod, model_name)
-        return vgg_model(num_class)
+    elif model_name.startswith('resnet18'):
+        return resnet.resnet18(pretrained=False, progress=False, device='cpu')
+    # elif model_name.startswith('vgg'):
+    #     mod = importlib.import_module('src.models.vgg')
+    #     vgg_model = getattr(mod, model_name)
+    #     return vgg_model(num_class)
     else:
         raise ValueError("Not support model: {}!".format(model_name))
 

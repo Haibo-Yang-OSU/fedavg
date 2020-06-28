@@ -42,6 +42,7 @@ class Client(object):
         self.round_num = round_num
 
         self.lr = FLAGS.client_lr
+        # self.lr = self.get_lr()
         self.optimizer = optimizers.get_optimizer(self.model)
         # self.lr_decay = FLAGS.client_lr_decay
         # self.client_lr_schedule = FLAGS.client_lr_schedule
@@ -62,14 +63,14 @@ class Client(object):
             torch.cuda.set_device(FLAGS.device)
             torch.backends.cudnn.enabled = True
             self.model.cuda()
-            print('>>> Client use gpu on device {}'.format(FLAGS.device))
+            # print('>>> Client use gpu on device {}'.format(FLAGS.device))
         else:
             print('>>> Client {} do not use gpu'.format(self.cid))
 
 
     def get_lr(self):
         # To do: return lr based on round_num
-        return FLAGS.client_lr
+        return FLAGS.client_lr * (0.1 ** (FLAGS.round_num // 50))
 
 
     def set_flat_model_params(self, flat_params):
@@ -124,7 +125,7 @@ class Client(object):
 
                 loss = criterion(pred, y)
                 loss.backward()
-                torch.nn.utils.clip_grad_norm(self.model.parameters(), 60)
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 60)
                 self.optimizer.step()
 
                 _, predicted = torch.max(pred, 1)
@@ -142,9 +143,13 @@ class Client(object):
         local_new_model = self.get_flat_model_params()
         return_delta = local_new_model - self.previous_model
 
-        return_delta_temp = return_delta + self.error
-        return_delta = compression_method.get_compression(return_delta_temp)
-        self.error = return_delta_temp - return_delta
+        if FLAGS.error_feedback:
+            return_delta_temp = return_delta + self.error
+            return_delta = compression_method.get_compression(return_delta_temp)
+            self.error = return_delta_temp - return_delta
+        else:
+            # return_delta_temp = return_delta
+            return_delta = compression_method.get_compression(return_delta)
 
         return_dict = {}
 

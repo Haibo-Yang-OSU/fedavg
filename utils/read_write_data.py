@@ -131,6 +131,12 @@ class Metrics(object):
 	        FLAGS.num_epochs, FLAGS.num_round, FLAGS.compressor, FLAGS.compress_factor
         )
 
+        if not FLAGS.error_feedback:
+            self.exp_name = 'model_{}_client_lr_{}_server_lr_{}_clients_per_round_{}_local_epochs_{}_num_round_{}_compressor_{}_compression_{}_noFeedback'.format(
+                FLAGS.model, FLAGS.client_lr, FLAGS.server_lr, FLAGS.clients_per_round,
+                FLAGS.num_epochs, FLAGS.num_round, FLAGS.compressor, FLAGS.compress_factor
+            )
+
         train_event_folder = mkdir(os.path.join(self.result_path, self.exp_name, 'train.event'))
         eval_event_folder = mkdir(os.path.join(self.result_path, self.exp_name, 'eval.event'))
         self.train_writer = SummaryWriter(train_event_folder)

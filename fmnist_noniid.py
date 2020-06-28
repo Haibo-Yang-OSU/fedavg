@@ -119,8 +119,8 @@ def save_data(train_X, train_y, test_X, test_y, digit_num):
 cpath = os.path.dirname(__file__)
 DATASET_FILE = os.path.join(cpath, 'data_temp', 'fmnist')
 
-trainset = torchvision.datasets.FashionMNIST(DATASET_FILE, download=True, train=True)
-testset = torchvision.datasets.FashionMNIST(DATASET_FILE, download=True, train=False)
+trainset = torchvision.datasets.FashionMNIST(DATASET_FILE, download=True, train=True, transform=torchvision.transforms.ToTensor())
+testset = torchvision.datasets.FashionMNIST(DATASET_FILE, download=True, train=False,transform=torchvision.transforms.ToTensor())
 
 trainX_np = trainset.train_data.numpy()
 trainY_np = trainset.train_labels.numpy()

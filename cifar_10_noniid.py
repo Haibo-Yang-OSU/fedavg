@@ -119,8 +119,15 @@ def save_data(train_X, train_y, test_X, test_y, digit_num):
 cpath = os.path.dirname(__file__)
 DATASET_FILE = os.path.join(cpath, 'data_temp', 'cifar_10')
 
-trainset = torchvision.datasets.CIFAR10(DATASET_FILE, download=True, train=True)
-testset = torchvision.datasets.CIFAR10(DATASET_FILE, download=True, train=False)
+mean_ = [0.4914, 0.4822, 0.4465]
+std_ = [0.2023, 0.1994, 0.2010]
+transform_train = torchvision.transforms.Compose([torchvision.transforms.RandomCrop(32, padding=4),
+                                              torchvision.transforms.RandomHorizontalFlip(),
+                                              torchvision.transforms.ToTensor(),
+                                              torchvision.transforms.Normalize(mean_, std_)])
+
+trainset = torchvision.datasets.CIFAR10(DATASET_FILE, download=True, train=True, transform=transform_train)
+testset = torchvision.datasets.CIFAR10(DATASET_FILE, download=True, train=False, transform=torchvision.transforms.ToTensor())
 
 trainX_np = trainset.data
 trainY_np = np.array(trainset.targets)

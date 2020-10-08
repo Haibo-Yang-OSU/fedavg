@@ -5,6 +5,7 @@ client class
 import time
 from torch.utils.data import DataLoader
 from absl import flags
+import logging
 
 from utils.flops_counter import get_model_complexity_info
 from models import model
@@ -25,52 +26,57 @@ class Client(object):
     in order to save CUDA memory.
     """
 
-    def __init__(self, dataset, round_num):
+    def __init__(self):
+        self.logger = logging.getLogger('main.client')
+        self.logger.info("Initial a client.")
 
+    def reset(self, dataset, errorfeedback, round_num):
         self.cid = dataset[0]
-        self.group = dataset[1]
-        self.train_data = dataset[2]
-        self.test_data = dataset[3]
-
+        self.train_data = dataset[1]
+        self.test_data = dataset[2]
         self.model = model.get_model()
         self.move_model_to_gpu()
-
-        self.error = torch.zeros_like(self.get_flat_model_params())
-
-
+        self.error = errorfeedback #torch.zeros_like(self.get_flat_model_params())
         self.num_epochs = FLAGS.num_epochs
         self.round_num = round_num
-
         self.lr = FLAGS.client_lr
         # self.lr = self.get_lr()
         self.optimizer = optimizers.get_optimizer(self.model)
-        # self.lr_decay = FLAGS.client_lr_decay
-        # self.client_lr_schedule = FLAGS.client_lr_schedule
-        # self.client_decay_epochs = FLAGS.client_decay_epochs
-
 
         self.train_dataloader = DataLoader(self.train_data, batch_size=FLAGS.client_batch_size, shuffle=True)
         self.test_dataloader = DataLoader(self.test_data, batch_size=FLAGS.client_batch_size, shuffle=False)
 
         self.input_shape = model.get_input_info()['input_shape']
 
+        self.logger.debug("reset client %d", self.cid)
+
         # Setup local model and evaluate its statics
-        self.flops, self.params_num, self.model_bytes = \
-            get_model_complexity_info(self.model, self.input_shape)
+        # self.flops, self.params_num, self.model_bytes = \
+        #     get_model_complexity_info(self.model, self.input_shape)
 
     def move_model_to_gpu(self):
         if FLAGS.gpu:
-            torch.cuda.set_device(FLAGS.device)
             torch.backends.cudnn.enabled = True
-            self.model.cuda()
-            # print('>>> Client use gpu on device {}'.format(FLAGS.device))
+            if torch.cuda.device_count() > 1:
+                self.model = nn.DataParallel(self.model)
+                self.debug("Client %d use data parallel, Availabel GPUs: %d", self.cid, torch.cuda.device_count())
+            # torch.cuda.set_device(FLAGS.device)
+                self.model.to(FLAGS.device)
+            else:
+                self.model.to(FLAGS.device)
+                self.logger.debug("Client %d use one GPU: %d", self.cid, FLAGS.device)
         else:
-            print('>>> Client {} do not use gpu'.format(self.cid))
+            self.logger.debug("Client %d use one CPU", self.cid)
 
 
     def get_lr(self):
         # To do: return lr based on round_num
-        return FLAGS.client_lr * (0.1 ** (FLAGS.round_num // 50))
+        if FLAGS.client_lr_schedule == 'constant':
+            return FLAGS.client_lr
+        elif FLAGS.client_lr_schedule == 'stepLR':
+            return FLAGS.client_lr * (FLAGS.client_lr_decay ** (FLAGS.round_num // FLAGS.client_decay_epochs))
+        else:
+            raise ValueError("Donot support the learning rate schedule.")
 
 
     def set_flat_model_params(self, flat_params):
@@ -82,7 +88,7 @@ class Client(object):
         return flat_params.detach()
 
 
-    def local_train(self, flat_params, round_num, **kwargs):
+    def local_train(self, flat_params, **kwargs):
         """Solves local optimization problem
 
         Returns:
@@ -102,10 +108,10 @@ class Client(object):
                     training loss/accuracy: list of each local epoch
         """
         # updata clients' model based on server's model
+        t0 = time.time()
         self.set_flat_model_params(flat_params)
         self.previous_model = self.get_flat_model_params()
 
-        begin_time = time.time()
         self.model.train()
         train_loss = 0
         train_acc = 0
@@ -114,14 +120,13 @@ class Client(object):
             train_loss = train_acc = train_total = 0
             for batch_idx, (x, y) in enumerate(self.train_dataloader):
                 if FLAGS.gpu:
-                    x, y = x.cuda(), y.cuda()
+                    x, y = x.cuda(device=FLAGS.device), y.cuda(device=FLAGS.device)
 
                 self.optimizer.zero_grad()
                 pred = self.model(x)
 
                 if torch.isnan(pred.max()):
-                    from IPython import embed
-                    embed()
+                    raise ValueError(">>> gradients blow up for Nan.")
 
                 loss = criterion(pred, y)
                 loss.backward()
@@ -138,7 +143,6 @@ class Client(object):
             # train_loss.append(train_loss_ep)
             # train_acc.append(train_acc_ep)
             # train_total.append(train_total_ep)
-        end_time = time.time()
 
         local_new_model = self.get_flat_model_params()
         return_delta = local_new_model - self.previous_model
@@ -153,14 +157,16 @@ class Client(object):
 
         return_dict = {}
 
-        bytes_w = self.model_bytes
-        comp = self.num_epochs * train_total * self.flops
-        bytes_r = self.model_bytes
-
-        stats_dict = {'id': self.cid, 'bytes_w': bytes_w, 'bytes_r': bytes_r,
-                 "comp": comp,  "time": round(end_time - begin_time, 2)}
+        # bytes_w = self.model_bytes
+        # comp = self.num_epochs * train_total * self.flops
+        # bytes_r = self.model_bytes
+        # stats_dict = {'id': self.cid, 'bytes_w': bytes_w, 'bytes_r': bytes_r,
+        #          "comp": comp,  "time": round(end_time - begin_time, 2)}
+        # return_dict.update(stats_dict)
+        #
+        stats_dict = {'id': self.cid, "time": round(time.time() - t0, 2)}
         return_dict.update(stats_dict)
-
+        #
         param_dict = {"grad_norm": torch.norm(local_new_model).item(),
                       "grad_max": local_new_model.max().item(),
                       "grad_min": local_new_model.min().item()}
@@ -175,8 +181,13 @@ class Client(object):
                      "train_acc": train_acc/train_total}
         return_dict.update(loss_dict)
 
+        error_dict = {"error_norm": torch.norm(self.error).item(),
+                      "error_max": self.error.max().item(),
+                      "error_min": self.error.min().item()}
+        return_dict.update(error_dict)
 
-        return (len(self.train_data), return_delta), return_dict
+
+        return (len(self.train_data), return_delta), return_dict, self.error
 
 
     def local_test(self, flat_params, use_eval_data=True):
@@ -202,11 +213,8 @@ class Client(object):
         test_loss = test_acc = test_total = 0.
         with torch.no_grad():
             for x, y in test_dataloader:
-                # print("test")
-                # from IPython import embed
-                # embed()
                 if FLAGS.gpu:
-                    x, y = x.cuda(), y.cuda()
+                    x, y = x.cuda(device=FLAGS.device), y.cuda(device=FLAGS.device)
 
                 pred = self.model(x)
                 loss = criterion(pred, y)

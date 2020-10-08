@@ -121,6 +121,8 @@ class Metrics(object):
         self.loss_on_train_data = [0] * num_rounds
         self.acc_on_train_data = [0] * num_rounds
 
+        self.extra_info = [0] * num_rounds
+
         # Statistics in test procedure
         self.loss_on_eval_data = [0] * num_rounds
         self.acc_on_eval_data = [0] * num_rounds
@@ -155,11 +157,16 @@ class Metrics(object):
         self.eval_writer.add_scalar('test_loss', eval_stats['loss'], round_i)
         self.eval_writer.add_scalar('test_acc', eval_stats['acc'], round_i)
 
+    def add_extra_stats(self, round_i, extra_info):
+        self.extra_info[round_i] = extra_info
+
     def write(self):
         test_dir = os.path.join(self.result_path, self.exp_name, 'test_accuracy.txt')
         train_dir_loss = os.path.join(self.result_path, self.exp_name, 'training_loss.txt')
         train_dir_acc = os.path.join(self.result_path, self.exp_name, 'training_acc.txt')
+        extra_dir = os.path.join(self.result_path, self.exp_name, 'extra_info')
         np.savetxt(str(train_dir_loss), self.loss_on_train_data)
         np.savetxt(str(train_dir_acc), self.acc_on_train_data)
         np.savetxt(str(test_dir), self.acc_on_eval_data)
-        print('----write result finished.')
+        np.save(str(extra_dir), self.extra_info)
+        # print('----write result finished.')

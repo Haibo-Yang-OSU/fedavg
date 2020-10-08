@@ -1,10 +1,10 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import importlib
 import math
-import torchvision
 
 from models import resnet
+from models import vgg
 
 from absl import flags
 FLAGS = flags.FLAGS
@@ -106,6 +106,27 @@ class CifarCnn(nn.Module):
         return out
 
 
+class lstm(nn.Module):
+    def __init__(self, input_size, num_classes, hidden_size=128, num_layers=2):
+        super(lstm, self).__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.input_size = input_size[1]
+        self.lstm = nn.LSTM(self.input_size, hidden_size, num_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_size, num_classes)
+
+    def forward(self, x):
+        x = x.reshape(-1, self.input_size, self.input_size)
+        # Set initial hidden and cell states
+        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).cuda()
+        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).cuda()
+        # Forward propagate LSTM
+        out, _ = self.lstm(x, (h0, c0))  # out: tensor of shape (batch_size, seq_length, hidden_size)
+        # Decode the hidden state of the last time step
+        out = self.fc(out[:, -1, :])
+        return out
+
+
 def get_model():
     model_name = str(FLAGS.model).lower()
     aDict = get_input_info()
@@ -120,12 +141,12 @@ def get_model():
         return CifarCnn(input_shape, num_class)
     elif model_name == 'lenet':
         return LeNet(input_shape, num_class)
-    elif model_name.startswith('resnet18'):
+    elif model_name == 'lstm':
+        return lstm(input_shape, num_class)
+    elif model_name == 'resnet18':
         return resnet.resnet18(pretrained=False, progress=False, device='cpu')
-    # elif model_name.startswith('vgg'):
-    #     mod = importlib.import_module('src.models.vgg')
-    #     vgg_model = getattr(mod, model_name)
-    #     return vgg_model(num_class)
+    elif model_name == 'vgg11':
+        return vgg.vgg11(pretrained=False, progress=False, device='cpu')
     else:
         raise ValueError("Not support model: {}!".format(model_name))
 

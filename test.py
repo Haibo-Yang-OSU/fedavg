@@ -1,24 +1,15 @@
-import time
-import multiprocessing
-const = 1
 
-def f(x, y, z):
-	time.sleep(5)
-	return x.train(y, z)
+import sys
+from absl import flags
+flags.DEFINE_integer('device', 0, 'CUDA device.')
 
-class exs():
-	def __init__(self,x):
-		self.x = x
-	def train(self, x1, x2):
-		print("local train")
-		return self.x+x1+x2, self.x+x1-x2
+FLAGS = flags.FLAGS
 
+FLAGS(sys.argv)
+flags.DEFINE_list('addnum', [], 'CUDA device.')
+FLAGS.device = 2
+FLAGS.addnum = list(range(3))
+print(FLAGS.device, FLAGS.addnum)
 
-cores = multiprocessing.cpu_count()
-pool = multiprocessing.Pool(processes=cores)
-exList = [exs(i) for i in range(10)]
-# print(cores)
-temp = pool.starmap_async(f, [(ex, 1, 2) for ex in exList]).get()
-print(temp)
-pool.close()
-pool.join()
+import numpy as np
+b = np.load('test.npy', allow_pickle=True)

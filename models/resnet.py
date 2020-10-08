@@ -1,3 +1,7 @@
+"""
+https://github.com/huyvnphan/PyTorch_CIFAR10
+"""
+
 import torch
 import torch.nn as nn
 import os
